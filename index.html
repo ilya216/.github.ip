@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анимированный Таймер</title>
+    <!-- Подключаем файл со стилями -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <h1>Круговой Таймер</h1>
+
+        <div class="timer-display" id="timerDisplay">05:00</div>
+
+        <div class="svg-container">
+            <svg class="base-timer__svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <g class="base-timer__circle-group">
+                    <circle class="base-timer__path-background" cx="50" cy="50" r="44"></circle>
+                    <circle id="base-timer-path-remaining" class="base-timer__path-remaining"
+                            cx="50" cy="50" r="44"
+                            stroke-dasharray="276.46" stroke-dashoffset="276.46"
+                            transform="rotate(-90 50 50)"></circle>
+                    <div id="spinner"></div>
+                    <text x="50%" y="52%" dominant-baseline="central" text-anchor="middle" font-size="1.8rem">
+                        <tspan id="timer-label">Минут</tspan>
+                    </text>
+                </g>
+            </svg>
+        </div>
+
+        <div class="controls">
+            <label for="minutesInput">Минуты (макс. <span id="maxValue">99</span>):</label>
+            <input type="number" id="minutesInput" value="5" min="1" max="99">
+            
+            <button class="start active" id="startBtn">Старт</button>
+            <button class="stop" id="stopBtn">Стоп</button>
+            <button class="reset" id="resetBtn">Сброс</button>
+        </div>
+    </div>
+
+    <!-- Подключаем файл со скриптами в самом конце, перед </body> -->
+    <script src="script.js"></script>
+
+</body>
+</html>
