@@ -1,113 +1,121 @@
-javascript
-Копировать
-// --- КОНФИГУРАЦИЯ ---
-const MAX_MINUTES = parseInt(document.getElementById('maxValue').textContent);
-const CIRCUMFERENCE = parseFloat(document.getElementById('base-timer-path-remaining').getAttribute('stroke-dasharray'));
+// --- Класс для управления таймером ---
+class Timer {
+    constructor() {
+        // Элементы DOM
+        this.timerDisplay = document.getElementById('timerDisplay');
+        this.minutesInput = document.getElementById('minutesInput');
+        this.startBtn = document.getElementById('startBtn');
+        this.stopBtn = document.getElementById('stopBtn');
+        this.resetBtn = document.getElementById('resetBtn');
+        this.spinner = document.getElementById('spinner');
+        this.svgCircle = document.getElementById('base-timer-path-remaining');
 
-// --- ЭЛЕМЕНТЫ DOM ---
-const timerDisplay = document.getElementById('timerDisplay');
-const minutesInput = document.getElementById('minutesInput');
-const startBtn = document.getElementById('startBtn');
-const stopBtn = document.getElementById('stopBtn');
-const resetBtn = document.getElementById('resetBtn');
-const spinner = document.getElementById('spinner');
-const svgCircle = document.getElementById('base-timer-path-remaining');
+        // Константы
+        this.CIRCUMFERENCE = parseFloat(this.svgCircle.getAttribute('stroke-dasharray'));
+        this.MAX_MINUTES = 99;
 
-// --- ПЕРЕМЕННЫЕ СОСТОЯНИЯ ---
-let duration = null; // Общее время в секундах
-let timeRemaining = null; // Оставшееся время в секундах
-let timerInterval = null; // ID интервала setInterval
+        // Состояние
+        this.duration = 0;
+        this.timeRemaining = 0;
+        this.timerInterval = null;
 
-// --- ФУНКЦИИ ЛОГИКИ ---
+        // Привязка контекста для обработчиков событий
+        this.onStart = this.onStart.bind(this);
+        this.onStop = this.onStop.bind(this);
+        this.onReset = this.onReset.bind(this);
 
-function onStart() {
-    if (timeRemaining === null || timeRemaining <= 0) {
-       setNewTime(); // Если таймер был остановлен или завершен, сбрасываем время из инпута
-   }
-   startBtn.classList.add('active');
-   stopBtn.classList.remove('active');
-   spinner.style.display = 'block'; // Показываем спиннер мгновенно
+        // Подключение слушателей событий
+        this.startBtn.addEventListener('click', this.onStart);
+        this.stopBtn.addEventListener('click', this.onStop);
+        this.resetBtn.addEventListener('click', this.onReset);
 
-   // Прячем спиннер через секунду (для имитации загрузки)
-   setTimeout(() => {
-       spinner.style.display = 'none';
-   }, 1000);
-   
-   startTimer();
+        // Инициализация при загрузке
+        this.setNewTime();
+    }
+
+    // --- Методы управления ---
+    onStart() {
+        if (this.timeRemaining <= 0) {
+            this.setNewTime();
+            this.updateDisplay(); // Сбросить вид, если был закончен
+        }
+
+        if (this.timerInterval) return; // Защита от двойного клика
+
+        this.startBtn.classList.add('active');
+        this.stopBtn.classList.remove('active');
+
+        // Показать спиннер и скрыть через секунду
+        this.spinner.style.display = 'block';
+        setTimeout(() => this.spinner.style.display = 'none', 1000);
+
+        this.timerInterval = setInterval(() => {
+            if (this.timeRemaining > 0.1) { // Условие для плавного завершения
+                this.timeRemaining -= 0.1; // Уменьшаем на 100мс (10 раз в секунду)
+                this.updateDisplay();
+            } else {
+                this.stopTimer();
+                alert("Время вышло!");
+            }
+        }, 100); // Интервал 100мс для баланса плавности и производительности
+    }
+
+    onStop() {
+        this.stopTimer();
+    }
+
+    onReset() {
+        this.stopTimer();
+        this.setNewTime();
+        this.updateDisplay();
+    }
+
+    stopTimer() {
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        
+        this.startBtn.classList.remove('active');
+        this.stopBtn.classList.remove('active'); // Убираем активный класс у Стопа при остановке
+    }
+
+    // --- Логика вычислений ---
+    setNewTime() {
+        const inputValue = parseInt(this.minutesInput.value) || 5; // Если пусто, то 5
+        this.duration = Math.min(Math.max(inputValue, 1), this.MAX_MINUTES) * 60;
+        this.timeRemaining = this.duration;
+    }
+
+    updateDisplay() {
+        if (this.timeRemaining < 0) return; // Защита
+
+        const minutesRaw = Math.floor(this.timeRemaining / 60);
+        const secondsRaw = Math.floor(this.timeRemaining % 60);
+        
+        const minutes = String(minutesRaw).padStart(2, '0');
+        
+        // Округление секунд для красоты отображения (например, 59.9 станет 60 -> 00)
+        const secondsRounded = Math.round(secondsRaw % 60);
+        
+        // Если округлили до 60, прибавляем минуту и ставим секунды в 00
+        const displaySeconds = secondsRounded === 60 ? '00' : String(secondsRounded).padStart(2, '0');
+        
+        if (secondsRounded === 60) {
+            // Это нужно, чтобы минуты обновились корректно при округлении секунд до 60
+            const displayMinutes = String(minutesRaw + 1).padStart(2, '0');
+            this.timerDisplay.textContent = `${displayMinutes}:${displaySeconds}`;
+            return;
+        }
+        
+         this.timerDisplay.textContent = `${minutes}:${displaySeconds}`;
+
+         // Анимация круга (SVG)
+         const progress = this.timeRemaining / this.duration;
+         const offset = this.CIRCUMFERENCE * progress;
+         this.svgCircle.style.strokeDashoffset = offset.toString();
+    }
 }
 
-function onStop() {
-   clearInterval(timerInterval);
-   timerInterval = null;
-   startBtn.classList.remove('active');
-   stopBtn.classList.add('active');
-}
-
-function onReset() {
-   onStop(); // Останавливаем, если идет отсчет
-   setNewTime(); // Задаем время из инпута (по сути, сбрасываем прогресс)
-   updateDisplay(); // Обновляем UI до начального состояния
-
-   // Сбрасываем анимацию круга к началу визуально мгновенно
-   const offset = CIRCUMFERENCE * (timeRemaining / duration);
-   svgCircle.style.strokeDashoffset = offset.toString();
-}
-
-
-function setNewTime() {
-   const inputValue = parseInt(minutesInput.value);
-   duration = Math.min(Math.max(inputValue, 1), MAX_MINUTES) * 60; // Конвертируем в секунды и ограничиваем макс/мин
-   timeRemaining = duration; // Сбрасываем оставшееся время до полного значения
-}
-
-
-function startTimer() {
-   if (timerInterval) return; // Защита от двойного клика
-
-   timerInterval = setInterval(() => {
-       if (timeRemaining > 1) { // Если осталось больше секунды
-           timeRemaining -= (1/60); // Уменьшаем на долю секунды для плавности (60fps)
-           updateDisplay();
-       } else { // Таймер закончился (время <= ~1 сек)
-           clearInterval(timerInterval);
-           timerInterval = null;
-           timeRemaining = null; // Полный сброс состояния
-
-           // Финальные действия при завершении
-           updateDisplay();
-           alert("Время вышло!");
-           startBtn.classList.remove('active');
-       }
-   }, 17); // ~60 кадров в секунду для плавной анимации круга и цифр
-}
-
-
-function updateDisplay() {
-   if (!timeRemaining && timeRemaining !== 0) return; // Защита на случай null
-
-   // Форматирование времени мм : сс с ведущими нулями и округлением секунд
-   const minutesRaw = Math.floor(timeRemaining / 60);
-   const secondsRaw = Math.floor(timeRemaining % 60);
-   
-   const minutes = String(minutesRaw).padStart(2, '0');
-   
-   // Округление секунд до ближайшего целого для более "чистого" отображения при высокой частоте кадров
-   const secondsRounded = Math.round(secondsRaw);
-   const seconds = String(secondsRounded).padStart(2, '0');
-   
-   timerDisplay.textContent = `${minutes}:${seconds}`;
-
-   // Анимация круга (SVG)
-   const progress = timeRemaining / duration; // Процент оставшегося времени (от 1 до ~-1)
-   const offset = CIRCUMFERENCE * progress; // Вычисляем смещение линии
-
-   svgCircle.style.strokeDashoffset = offset.toString();
-}
-
-
-// --- НАЧАЛЬНАЯ НАСТРОЙКА И ОБРАБОТЧИКИ СОБЫТИЙ ---
-setNewTime(); // Инициализация времени при загрузке страницы
-
-startBtn.addEventListener('click', onStart);
-stopBtn.addEventListener('click', onStop);
-resetBtn.addEventListener('click', onReset);
+// Инициализация приложения при загрузке DOM
+document.addEventListener("DOMContentLoaded", () => {
+    new Timer(); // Создаем экземпляр таймера, когда страница готова
+});
